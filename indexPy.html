@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Expression Converter</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 30px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+        .container {
+            background: white;
+            padding: 40px;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+        }
+        h1 {
+            text-align: center;
+            color: #4a5568;
+            margin-bottom: 30px;
+        }
+        .input-group {
+            margin-bottom: 30px;
+        }
+        input[type="text"] {
+            width: 100%;
+            padding: 15px;
+            font-size: 18px;
+            border: 2px solid #e2e8f0;
+            border-radius: 10px;
+            box-sizing: border-box;
+            transition: border-color 0.3s;
+        }
+        input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+        .buttons {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+        button {
+            padding: 15px 20px;
+            font-size: 16px;
+            font-weight: 600;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(102, 126, 234, 0.4);
+        }
+        button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+        #output {
+            min-height: 80px;
+            padding: 20px;
+            font-size: 20px;
+            font-weight: bold;
+            font-family: 'Courier New', monospace;
+            background: #f7fafc;
+            border: 2px solid #e2e8f0;
+            border-radius: 10px;
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+        .status {
+            padding: 10px;
+            border-radius: 8px;
+            margin-top: 15px;
+            text-align: center;
+            font-weight: 500;
+        }
+        .success { background: #c6f6d5; color: #22543d; border: 1px solid #9ae6b4; }
+        .error { background: #fed7d7; color: #742a2a; border: 1px solid #fc8181; }
+        .loading { background: #bee3f8; color: #2a4365; border: 1px solid #90cdf4; }
+        .examples {
+            margin-top: 30px;
+            padding: 20px;
+            background: #edf2f7;
+            border-radius: 10px;
+        }
+        .examples h3 { margin-top: 0; color: #4a5568; }
+        .examples button {
+            background: #e2e8f0;
+            color: #4a5568;
+            font-size: 14px;
+            padding: 8px 12px;
+            margin: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧮 Expression Converter</h1>
+        
+        <div class="input-group">
+            <input id="expressionInput" type="text" placeholder="Enter expression like: (a+b)*c or a+b*c" />
+        </div>
+
+        <div class="buttons">
+            <button onclick="sendRequest('infix_postfix')" title="Infix → Postfix">Infix → Postfix</button>
+            <button onclick="sendRequest('infix_prefix')" title="Infix → Prefix">Infix → Prefix</button>
+            <button onclick="sendRequest('prefix_infix')" title="Prefix → Infix">Prefix → Infix</button>
+            <button onclick="sendRequest('postfix_infix')" title="Postfix → Infix">Postfix → Infix</button>
+        </div>
+
+        <div id="output">Enter expression and click a conversion button...</div>
+        <div id="status"></div>
+
+        <div class="examples">
+            <h3>Quick Examples:</h3>
+            <button onclick="setExample('+a*b^-c/def')">+a*b^-c/def</button>
+            <button onclick="setExample('(a+((b^c)*d)-e)+(f/g)*h')">(a+((b^c)*d)-e)+(f/g)*h</button>
+            <button onclick="setExample('(a^(b+c)d-e)/(f+g(h-i))')">(a^(b+c)d-e)/(f+g(h-i))</button>
+            <button onclick="setExample('pqrstu^-/+*v-')">pqrstu^-/+*v-</button>
+            
+        </div>
+    </div>
+
+<script>
+    const BACKEND_URL = "https://expression-converter-backend.onrender.com/convert";
+
+    function showStatus(message, type = 'info') {
+        const status = document.getElementById('status');
+        status.textContent = message;
+        status.className = `status ${type}`;
+    }
+
+    function setExample(expr) {
+        document.getElementById('expressionInput').value = expr;
+        document.getElementById('output').textContent = 'Example selected. Now click a conversion button.';
+        showStatus('', '');
+    }
+
+    function sendRequest(operation) {
+        const expr = document.getElementById('expressionInput').value.trim();
+        if (!expr) {
+            showStatus('Please enter an expression first!', 'error');
+            return;
+        }
+
+        const buttons = document.querySelectorAll('button[onclick*="sendRequest"]');
+        buttons.forEach(btn => btn.disabled = true);
+        showStatus('Converting...', 'loading');
+
+        fetch(BACKEND_URL, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                expression: expr,
+                operation: operation
+            })
+        })
+        .then(res => res.json())
+        .then(data => {
+            buttons.forEach(btn => btn.disabled = false);
+
+            if (data.result) {
+                document.getElementById('output').textContent = data.result;
+                showStatus('Converted successfully!', 'success');
+            } else {
+                document.getElementById('output').textContent = "Error";
+                showStatus(data.error || "Unknown error", 'error');
+            }
+        })
+        .catch(() => {
+            buttons.forEach(btn => btn.disabled = false);
+            showStatus("Network error — backend unreachable", "error");
+        });
+    }
+
+    document.getElementById('expressionInput').addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            sendRequest('infix_postfix');
+        }
+    });
+</script>
+
+</body>
+</html>
